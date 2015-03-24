@@ -1,5 +1,8 @@
 #include <Servo.h>
 
+#define bool unsigned char
+#define VELOCITY .0134
+
 const int middleSensor = A2;
 const int leftSensor = A1;
 const int rightSensor = A0;
@@ -24,6 +27,10 @@ unsigned char debugMode = 0;
 Servo myServoL;
 Servo myServoR;
 
+int time = 0;
+bool isTraveling = 0;
+int timeToTravel = 0;
+
 void setup(void)
 {
   pinMode(leftLED, OUTPUT);
@@ -33,100 +40,13 @@ void setup(void)
   myServoL.attach(9);  // Servo is connected to digital pin 9 
   myServoR.attach(10);  // Servo is connected to digital pin 10 
   stopServo();
-  calibrate();
-  accelerate(1);
+//  calibrate();
+//  accelerate(1);
+delay(5000);
+  time = millis();
 }
 
-void calibrate(){
-  for(int i = 0; i < 100; ++i)
-  {
-    errorL += analogRead(leftSensor);
-    errorR += analogRead(rightSensor);
-    errorM += analogRead(middleSensor);
-    Serial1.print(errorL);
-    Serial1.print("    ");
-    Serial1.print(errorR);
-    Serial1.print("    ");
-    Serial1.println(errorM);
-  }
-  
-  errorL /= 100;
-  errorR /= 100;
-  errorM /= 100;
-  Serial1.println("Error: ");
-  Serial1.print(errorL);
-  Serial1.print("    ");
-  Serial1.print(errorR);
-  Serial1.print("    ");
-  Serial1.println(errorM);
-
-  skewL = 500 - errorL;
-  skewR = 500 - errorR;
-  skewM = 500 - errorM;
-  
-  Serial1.println("Skew: ");
-  Serial1.print(skewL);
-  Serial1.print("    ");
-  Serial1.print(skewR);
-  Serial1.print("    ");
-  Serial1.println(skewM);
-  
-  Serial1.println("Final: ");
-  Serial1.print(errorL + skewL);
-  Serial1.print("    ");
-  Serial1.print(errorR + skewR);
-  Serial1.print("    ");
-  Serial1.println(errorM + skewM);
-  
-  Serial1.println("Calibrating Complete");
-  if(debugMode){
-    digitalWrite(leftLED, HIGH);
-    digitalWrite(rightLED, HIGH);
-    delay(250);
-    digitalWrite(leftLED, LOW);
-    digitalWrite(rightLED, LOW);
-    delay(250);
-    digitalWrite(leftLED, HIGH);
-    digitalWrite(rightLED, HIGH);
-    delay(250);
-    digitalWrite(leftLED, LOW);
-    digitalWrite(rightLED, LOW);
-    delay(250);
-  }
-  errorL = errorR = errorM = 0;
-  delay(2000);
-}
-
-void stopServo()
-{
-   myServoL.writeMicroseconds(1500);  // Stopped
-   myServoR.writeMicroseconds(1500);  // Stopped
-}
-
-void forward(){
-  myServoR.writeMicroseconds(maxSpeedR);
-  myServoL.writeMicroseconds(maxSpeedL);
-}
-
-void accelerate(int delayTime){
-  for(int i = 0; i < 200; ++i)
-  {
-    myServoR.writeMicroseconds(1500 - i);
-    myServoL.writeMicroseconds(1500 + i);
-    delay(delayTime);    
-  }
-}
-
-void decelerate(int delayTime){
-  for(int i = 0; i < 200; ++i)
-  {
-    myServoR.writeMicroseconds(maxSpeedR + i);
-    myServoL.writeMicroseconds(maxSpeedL - i);
-    //delay(delayTime);    
-  }
-}
-
-void moveStraight(int totalError, unsigned char hugging)
+void Advance(int totalError, unsigned char hugging)
 {
   if(errorM < 580)
   {
@@ -175,6 +95,8 @@ void moveStraight(int totalError, unsigned char hugging)
     if(errorM > 800)
     {
       stopAndDecide();
+//      Serial1.print("ErrorM: "); //Code for finding percentage formula
+//      Serial1.println(errorM);
     }
   }
 }
@@ -201,6 +123,8 @@ void stopAndDecide()
   else if(errorL > errorR) //Theres a Wall on the Left Side
   {
     turnRight();
+//    Serial1.print("ErrorM: "); //Code for finding percentage formula
+//    Serial1.println(errorM);
     Serial1.println("---------------------------");
     Serial1.println("RIGHT TURN");
     Serial1.println("L    R    M");
@@ -224,95 +148,31 @@ void stopAndDecide()
   }
 }
 
-void turnLeft()
-{
-  digitalWrite(leftLED, HIGH);
-  digitalWrite(rightLED, LOW);
-  myServoR.writeMicroseconds(maxSpeedR);
-  myServoL.writeMicroseconds(maxSpeedR);
-  delay(495);
-  stopServo();
-  delay(50);
-  digitalWrite(leftLED, LOW);
-  digitalWrite(rightLED, LOW);
-}
-
-void turnRight()
-{
-  digitalWrite(leftLED, LOW);
-  digitalWrite(rightLED, HIGH);
-  myServoR.writeMicroseconds(maxSpeedL);
-  myServoL.writeMicroseconds(maxSpeedL);
-  delay(495);
-  stopServo();
-  delay(50);
-  digitalWrite(leftLED, LOW);
-  digitalWrite(rightLED, LOW);
-}
-
-unsigned int readAverage(int averageOf){
-  for(int i = 0; i < averageOf; ++i)
-  {
-    errorL += analogRead(leftSensor);
-    errorR += analogRead(rightSensor);
-    errorM += analogRead(middleSensor);
+void travelDistance(unsigned char centimeters){
+  if(isTraveling){
+    if(millis() >= time + timeToTravel)
+    {
+      isTraveling = 0;
+      stopServo();
+      while(1) {}
+    }
   }
-  errorL = (errorL/averageOf) + skewL;
-  errorR = (errorR/averageOf) + skewR;
-  errorM = (errorM/averageOf) + skewM;
+  else{
+    time = millis();
+    timeToTravel = centimeters/VELOCITY;
+    isTraveling = 1;
+  }
 }
 
 void loop()
 {
-  readAverage(10);
-  
-  counter = (counter + 1) % 10; //Timer
-  
-  if(counter == 0)
-  {
-    Serial1.print("sensor middle: ");
-    Serial1.println(errorM);
-  }
-  
-   if(counter == 0) {
-    
-    Serial1.print("sensor left: ");
-    Serial1.println(errorL);
-    Serial1.print("sensor right: ");
-    Serial1.println(errorR);
-}
-  if(errorL > errorR && (errorL-errorR > 7))
-  {
-    totalError = errorL - errorR;
-    hugging = 0; // Left
-    
-//    if(counter == 0) {
-//      Serial1.print("Total error: ");
-//      Serial1.println(totalError);
-//      Serial1.println("||          .           .");
-//      }
-  }
-  else if(errorR > errorL && (errorR-errorL > 7))
-  {
-    totalError = errorR - errorL;
-    hugging = 1; // Right
-//    if(counter == 0) {
-//      Serial1.print(" Total error: ");
-//      Serial1.println(totalError);
-//      Serial1.println(".           .          ||");
-//    }
-  }
-  else
-  {
-    totalError = 0;
-    hugging = 'F';
-//    if(counter == 0) 
-//      Serial1.println(".           ||           .");
-  }
-  
-  moveStraight(totalError, hugging);
-  
-  errorL = errorR = errorM = 0;
-  delay(100);
+//  collectData();
+//  
+//  Advance(totalError, hugging);
+//  
+//  errorL = errorR = errorM = 0;
+//  delay(100);
+  forward();
+  travelDistance(20);
   
 }
