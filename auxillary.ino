@@ -51,28 +51,27 @@ void turnRight()
   delay(50);
   digitalWrite(leftLED, LOW);
   digitalWrite(rightLED, LOW);
+  
+  eastDirection();
 }
 
 void collectData(){
-  errorL = analogRead(leftSensor);
-  errorR = analogRead(rightSensor);
-  errorM = analogRead(middleSensor);
+  errorL = analogRead(leftSensor) + skewL;
+  errorR = analogRead(rightSensor) + skewR;
+  errorM = analogRead(middleSensor) + skewM;
   
-  counter = (counter + 1) % 10; //Timer
+//  counter = (counter + 1) % 10; //Timer
+//  
+//  if(counter == 0)
+//  {
+//    Serial1.println("L    R    M");
+//    Serial1.print(errorL);
+//    Serial1.print("    ");
+//    Serial1.print(errorR);
+//    Serial1.print("    ");
+//    Serial1.println(errorM);
+//  }
   
-  if(counter == 0)
-  {
-    Serial1.print("sensor middle: ");
-    Serial1.println(errorM);
-  }
-  
-   if(counter == 0) {
-    
-    Serial1.print("sensor left: ");
-    Serial1.println(errorL);
-    Serial1.print("sensor right: ");
-    Serial1.println(errorR);
-}
   if(errorL > errorR && (errorL-errorR > 7))
   {
     totalError = errorL - errorR;

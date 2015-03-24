@@ -2,6 +2,7 @@
 
 #define bool unsigned char
 #define VELOCITY .0134
+#define TRAVELING_CONSTANT .01
 
 const int middleSensor = A2;
 const int leftSensor = A1;
@@ -15,7 +16,7 @@ unsigned int totalError = 0;
 unsigned int errorL = 0;
 unsigned int errorR = 0;
 unsigned int errorM = 0;
-const double Kp = 1;
+const double Kp = 1.3;
 unsigned int counter = 0;
 unsigned int skewL = 0;
 unsigned int skewR = 0;
@@ -28,22 +29,22 @@ Servo myServoL;
 Servo myServoR;
 
 int time = 0;
-bool isTraveling = 0;
+bool isTraveling = 1;
 int timeToTravel = 0;
 
 void setup(void)
 {
   pinMode(leftLED, OUTPUT);
   pinMode(rightLED, OUTPUT);
+  gridInit();
   
   Serial1.begin(9600);
   myServoL.attach(9);  // Servo is connected to digital pin 9 
   myServoR.attach(10);  // Servo is connected to digital pin 10 
   stopServo();
-//  calibrate();
-//  accelerate(1);
-delay(5000);
+  calibrate();
   time = millis();
+  forward();
 }
 
 void Advance(int totalError, unsigned char hugging)
@@ -164,15 +165,31 @@ void travelDistance(unsigned char centimeters){
   }
 }
 
+void traveledOneCell(int square){
+  if(isTraveling){
+    if(VELOCITY * (millis() - time) >= square - TRAVELING_CONSTANT){
+      Serial1.println(VELOCITY * (millis() - time));
+      markCell();
+      printGrid();
+      isTraveling = 0;
+    }
+  }
+  if(!isTraveling){
+    time = millis();
+    isTraveling = 1;
+  }
+  
+}
+
+
+
 void loop()
 {
-//  collectData();
-//  
-//  Advance(totalError, hugging);
-//  
-//  errorL = errorR = errorM = 0;
-//  delay(100);
-  forward();
-  travelDistance(20);
+  collectData();
   
+  Advance(totalError, hugging);
+  
+  errorL = errorR = errorM = 0;
+  traveledOneCell(18);
+  delay(100);
 }
