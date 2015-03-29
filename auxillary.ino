@@ -14,7 +14,7 @@ void accelerate(int delayTime){
     {
         myServoR.writeMicroseconds(1500 - i);
         myServoL.writeMicroseconds(1500 + i);
-        delay(delayTime);
+        delay(delayTime);  
     }
 }
 
@@ -23,35 +23,33 @@ void decelerate(int delayTime){
     {
         myServoR.writeMicroseconds(maxSpeedR + i);
         myServoL.writeMicroseconds(maxSpeedL - i);
-        //delay(delayTime);    
+        delay(delayTime);    
     }
 }
 
-void turnLeft()
+void advanceLeft()
 {
-  digitalWrite(leftLED, HIGH);
-  digitalWrite(rightLED, LOW);
   myServoR.writeMicroseconds(maxSpeedR);
-  myServoL.writeMicroseconds(maxSpeedR);
-  delay(495);
+  myServoL.writeMicroseconds(maxSpeedR); ///NEED TO WORK ON THIS
+  delay(515);
   stopServo();
   delay(50);
-  digitalWrite(leftLED, LOW);
-  digitalWrite(rightLED, LOW);
 }
 
-void turnRight()
+void advanceLeftNoDelay()
 {
-  digitalWrite(leftLED, LOW);
-  digitalWrite(rightLED, HIGH);
-  myServoR.writeMicroseconds(maxSpeedL);
+  myServoR.writeMicroseconds(maxSpeedR);
+  myServoL.writeMicroseconds(maxSpeedR); ///NEED TO WORK ON THIS
+  delay(515);
+}
+
+void advanceRight()
+{
+  myServoR.writeMicroseconds(maxSpeedL); ///NEED TO WORK ON THIS
   myServoL.writeMicroseconds(maxSpeedL);
-  delay(495);
+  delay(515);
   stopServo();
   delay(50);
-  digitalWrite(leftLED, LOW);
-  digitalWrite(rightLED, LOW);
-  
   eastDirection();
 }
 
@@ -60,45 +58,75 @@ void collectData(){
   errorR = analogRead(rightSensor) + skewR;
   errorM = analogRead(middleSensor) + skewM;
   
-//  counter = (counter + 1) % 10; //Timer
-//  
-//  if(counter == 0)
-//  {
-//    Serial1.println("L    R    M");
-//    Serial1.print(errorL);
-//    Serial1.print("    ");
-//    Serial1.print(errorR);
-//    Serial1.print("    ");
-//    Serial1.println(errorM);
-//  }
+  counter = (counter + 1) % 10; //Timer
   
-  if(errorL > errorR && (errorL-errorR > 7))
+  if(counter == 0)
   {
+    Serial1.println("L    R    M");
+    Serial1.print(errorL);
+    Serial1.print("    ");
+    Serial1.print(errorR);
+    Serial1.print("    ");
+    Serial1.println(errorM);
+  }
+  
+//  if(errorR < 475 && errorM < errorL < 475) //There is no wall on both sides
+//  {}
+
+  if(waitingForTimer || ((errorR - errorL) > 40  && errorM < WALL_APPROACHING)) //There is no wall on the left side
+  {
+    waitingForTimer = 1;
+    leftTimer = (leftTimer + 1) % 15; //Timer
+    if(leftTimer == 0){
+      Serial1.print("There is no wall on the Left side ");
+      advanceLeft();
+      waitingForTimer = 0;
+    }
+    totalError = 0;
+    hugging = 2; //2 Does nothing for now
+  }
+  
+  if(errorR < 410 && errorM < WALL_APPROACHING) //There is no wall on the right side
+  {
+      Serial1.print("There is no wall on the Right side ");
+      Serial1.println(errorL);
+      totalError = 500 - errorL;
+      if(totalError < 0){ //Too close to Left Side
+        myServoR.writeMicroseconds(maxSpeedR + (totalError * Kp));
+        myServoL.writeMicroseconds(maxSpeedL);
+      }
+      else{ //Too close to Right Side
+        myServoL.writeMicroseconds(maxSpeedL - (totalError * Kp));  // Counter clockwise
+        myServoR.writeMicroseconds(maxSpeedR);
+      }
+      hugging = 2;
+      return;
+  }
+  
+  else if(errorL > 500 && errorR > 500 && errorM > 700) //DO 180 turn
+  {
+    advanceLeftNoDelay();
+    advanceLeft();
+    totalError = 0;
+    hugging = 2; //2 Does nothing for now
+  }
+  
+  else if(errorL > errorR && (errorL-errorR > 7))
+  {
+    Serial1.println("Closer to Left Side");
     totalError = errorL - errorR;
     hugging = 0; // Left
-    
-//    if(counter == 0) {
-//      Serial1.print("Total error: ");
-//      Serial1.println(totalError);
-//      Serial1.println("||          .           .");
-//      }
   }
   else if(errorR > errorL && (errorR-errorL > 7))
   {
+    Serial1.println("Closer to Right Side");
     totalError = errorR - errorL;
     hugging = 1; // Right
-//    if(counter == 0) {
-//      Serial1.print(" Total error: ");
-//      Serial1.println(totalError);
-//      Serial1.println(".           .          ||");
-//    }
   }
   else
   {
     totalError = 0;
     hugging = 'F';
-//    if(counter == 0) 
-//      Serial1.println(".           ||           .");
   }
 }
 
@@ -111,4 +139,12 @@ void measureOneSecond(){
     Serial1.println(time);
     while(1) {}
   }
+}
+
+unsigned int readErrorL(){
+  return analogRead(leftSensor) + skewL;
+}
+
+unsigned int readErrorR(){
+  return analogRead(rightSensor) + skewR;
 }

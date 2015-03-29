@@ -40,20 +40,7 @@ void calibrate(){
   Serial1.println(errorM + skewM);
   
   Serial1.println("Calibrating Complete");
-  if(debugMode){
-    digitalWrite(leftLED, HIGH);
-    digitalWrite(rightLED, HIGH);
-    delay(250);
-    digitalWrite(leftLED, LOW);
-    digitalWrite(rightLED, LOW);
-    delay(250);
-    digitalWrite(leftLED, HIGH);
-    digitalWrite(rightLED, HIGH);
-    delay(250);
-    digitalWrite(leftLED, LOW);
-    digitalWrite(rightLED, LOW);
-    delay(250);
-  }
+
   errorL = errorR = errorM = 0;
   delay(2000);
 }
