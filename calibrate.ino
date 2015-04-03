@@ -42,5 +42,22 @@ void calibrate(){
   Serial1.println("Calibrating Complete");
 
   errorL = errorR = errorM = 0;
-  delay(2000);
+  delay(1000);
+}
+
+void calibrateTurns(){
+  advanceLeft();
+  stopServo();
+  delay(1000);
+  advanceLeft();
+  stopServo();
+  delay(1000);
+  advanceLeft();
+  stopServo();
+  delay(1000);
+  advanceLeft();
+  stopServo();
+  delay(1000);
+  
+  while(1) {}
 }

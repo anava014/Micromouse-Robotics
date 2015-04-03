@@ -19,115 +19,120 @@ void accelerate(int delayTime){
 }
 
 void decelerate(int delayTime){
-    for(int i = 0; i < 200; ++i)
-    {
-        myServoR.writeMicroseconds(maxSpeedR + i);
-        myServoL.writeMicroseconds(maxSpeedL - i);
-        delay(delayTime);    
-    }
+  for(int i = 0; i < 200; ++i)
+  {
+      myServoR.writeMicroseconds(maxSpeedR + i);
+      myServoL.writeMicroseconds(maxSpeedL - i);
+      delay(delayTime);    
+  }
 }
 
 void advanceLeft()
 {
   myServoR.writeMicroseconds(maxSpeedR);
   myServoL.writeMicroseconds(maxSpeedR); ///NEED TO WORK ON THIS
-  delay(515);
+  delay(TURN_DELAY);
   stopServo();
-  delay(50);
+//  delay(50);
+}
+
+void advance180Deg(){
+  myServoR.writeMicroseconds(maxSpeedR);
+  myServoL.writeMicroseconds(maxSpeedR); 
+  delay(TURN_DELAY * 2);
 }
 
 void advanceLeftNoDelay()
 {
   myServoR.writeMicroseconds(maxSpeedR);
   myServoL.writeMicroseconds(maxSpeedR); ///NEED TO WORK ON THIS
-  delay(515);
+  delay(TURN_DELAY);
 }
 
 void advanceRight()
 {
   myServoR.writeMicroseconds(maxSpeedL); ///NEED TO WORK ON THIS
   myServoL.writeMicroseconds(maxSpeedL);
-  delay(515);
+  delay(TURN_DELAY);
   stopServo();
-  delay(50);
+//  delay(50);
   eastDirection();
+}
+
+
+
+void prepareForLeftTurn(){
+    leftTimer = (leftTimer + 1) % LEFT_TIMER; //Timer
+    if(leftTimer == 0){
+      advanceLeft();
+      preparingToTurnLeft = 0;
+      preparingToTurnRight = 0;
+      disableLeftRight();
+    }
+}
+
+void prepareForRightTurn(){
+  //waitingForRightTimer = 1;
+    rightTimer = (rightTimer + 1) % 75; //Timer
+    if(rightTimer == 0){
+      Serial1.print("There is no wall on the Left side ");
+      advanceRight();
+      //waitingForRightTimer = 0;
+      //waitingForRightRespawn = 1;
+    }
+    totalError = 0;
+    function = 'F';
 }
 
 void collectData(){
   errorL = analogRead(leftSensor) + skewL;
   errorR = analogRead(rightSensor) + skewR;
   errorM = analogRead(middleSensor) + skewM;
+//  
+//  counter = (counter + 1) % 10; //Timer
+//  
+//  if(counter == 0)
+//  {
+//    Serial1.println("L    R    M");
+//    Serial1.print(errorL);
+//    Serial1.print("    ");
+//    Serial1.print(errorR);
+//    Serial1.print("    ");
+//    Serial1.println(errorM);
+//  }
   
-  counter = (counter + 1) % 10; //Timer
-  
-  if(counter == 0)
+  if((errorL <= LEFTWALLMISSING || preparingToTurnLeft) && (errorR <= RIGHTWALLMISSING || preparingToTurnRight)) // Missing Both walls!!! >:/
   {
-    Serial1.println("L    R    M");
-    Serial1.print(errorL);
-    Serial1.print("    ");
-    Serial1.print(errorR);
-    Serial1.print("    ");
-    Serial1.println(errorM);
-  }
-  
-//  if(errorR < 475 && errorM < errorL < 475) //There is no wall on both sides
-//  {}
-
-  if(waitingForTimer || ((errorR - errorL) > 40  && errorM < WALL_APPROACHING)) //There is no wall on the left side
-  {
-    waitingForTimer = 1;
-    leftTimer = (leftTimer + 1) % 15; //Timer
-    if(leftTimer == 0){
-      Serial1.print("There is no wall on the Left side ");
-      advanceLeft();
-      waitingForTimer = 0;
-    }
     totalError = 0;
-    hugging = 2; //2 Does nothing for now
+    function = 'F';
   }
-  
-  if(errorR < 410 && errorM < WALL_APPROACHING) //There is no wall on the right side
+  else if(errorL <= LEFTWALLMISSING || preparingToTurnLeft) // Missing Left Wall, PID Concentrates only on Right Error
   {
-      Serial1.print("There is no wall on the Right side ");
-      Serial1.println(errorL);
-      totalError = 500 - errorL;
-      if(totalError < 0){ //Too close to Left Side
-        myServoR.writeMicroseconds(maxSpeedR + (totalError * Kp));
-        myServoL.writeMicroseconds(maxSpeedL);
-      }
-      else{ //Too close to Right Side
-        myServoL.writeMicroseconds(maxSpeedL - (totalError * Kp));  // Counter clockwise
-        myServoR.writeMicroseconds(maxSpeedR);
-      }
-      hugging = 2;
-      return;
+    totalError = 500 - errorR;
+    function = 2;
   }
-  
-  else if(errorL > 500 && errorR > 500 && errorM > 700) //DO 180 turn
+  else if(errorR <= RIGHTWALLMISSING || preparingToTurnRight) // Missing Left Wall, PID Concentrates only on Left Error
   {
-    advanceLeftNoDelay();
-    advanceLeft();
-    totalError = 0;
-    hugging = 2; //2 Does nothing for now
+    totalError = 500 - errorL;
+    function = 3;
   }
-  
   else if(errorL > errorR && (errorL-errorR > 7))
   {
-    Serial1.println("Closer to Left Side");
     totalError = errorL - errorR;
-    hugging = 0; // Left
+    function = 0; // Left
   }
   else if(errorR > errorL && (errorR-errorL > 7))
   {
-    Serial1.println("Closer to Right Side");
     totalError = errorR - errorL;
-    hugging = 1; // Right
+    function = 1; // Right
   }
   else
   {
     totalError = 0;
-    hugging = 'F';
+    function = 'F';
   }
+  
+  pid(totalError, function);
 }
 
 void measureOneSecond(){
@@ -141,10 +146,14 @@ void measureOneSecond(){
   }
 }
 
-unsigned int readErrorL(){
+int readErrorL(){
   return analogRead(leftSensor) + skewL;
 }
 
-unsigned int readErrorR(){
+int readErrorR(){
   return analogRead(rightSensor) + skewR;
+}
+
+int readErrorM(){
+  return analogRead(middleSensor) + skewM;
 }

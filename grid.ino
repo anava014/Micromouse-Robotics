@@ -34,6 +34,37 @@ void markCell(){
     --posX;
 }
 
+void travelDistance(unsigned char centimeters){
+  if(isTraveling){
+    if(millis() >= time + timeToTravel)
+    {
+      isTraveling = 0;
+      stopServo();
+      while(1) {}
+    }
+  }
+  else{
+    time = millis();
+    timeToTravel = centimeters/VELOCITY;
+    isTraveling = 1;
+  }
+}
+
+void traveledOneCell(int square){
+  if(isTraveling){
+    if(VELOCITY * (millis() - time) >= square - TRAVELING_CONSTANT){
+      Serial1.println(VELOCITY * (millis() - time));
+      markCell();
+      printGrid();
+      isTraveling = 0;
+    }
+  }
+  if(!isTraveling){
+    time = millis();
+    isTraveling = 1;
+  }
+}
+
 void eastDirection(){
   direction = 2;
 }
