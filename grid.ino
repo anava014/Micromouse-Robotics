@@ -2,6 +2,7 @@ unsigned char mainGrid [16][16];
 unsigned char posY = 15;
 unsigned char posX = 0;
 unsigned char direction = 0;
+int firstTimeIn = 0;
 
 void gridInit(){
   for(unsigned char i = 0; i < 16; ++i)
@@ -53,16 +54,24 @@ void travelDistance(unsigned char centimeters){
 void traveledOneCell(int square){
   if(isTraveling){
     if(VELOCITY * (millis() - time) >= square - TRAVELING_CONSTANT){
-      Serial1.println(VELOCITY * (millis() - time));
+      gridCounter++;
+      //Serial1.println(VELOCITY * (millis() - time));
       markCell();
-      printGrid();
+      //printGrid();
+      digitalWrite(cellLED, HIGH);
+      speakerTimer = millis();
       isTraveling = 0;
+      if(gridCounter >= 2){
+        stopServo();
+        while(1) {}
+      }
     }
   }
   if(!isTraveling){
     time = millis();
     isTraveling = 1;
   }
+  
 }
 
 void eastDirection(){

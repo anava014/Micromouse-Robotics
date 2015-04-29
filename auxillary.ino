@@ -32,14 +32,22 @@ void advanceLeft()
   myServoR.writeMicroseconds(maxSpeedR);
   myServoL.writeMicroseconds(maxSpeedR); ///NEED TO WORK ON THIS
   delay(TURN_DELAY);
+  time += TURN_DELAY;
   stopServo();
-//  delay(50);
+  turnsInOneSecond++;
+  leftTurnClock = millis();
 }
 
 void advance180Deg(){
   myServoR.writeMicroseconds(maxSpeedR);
   myServoL.writeMicroseconds(maxSpeedR); 
   delay(TURN_DELAY * 2);
+  time += TURN_DELAY * 2;
+  //time += 200;
+  stopServo();
+//  turnsInOneSecond++;
+//  turnsInOneSecond++;
+//  leftTurnClock = millis();
 }
 
 void advanceLeftNoDelay()
@@ -54,16 +62,15 @@ void advanceRight()
   myServoR.writeMicroseconds(maxSpeedL); ///NEED TO WORK ON THIS
   myServoL.writeMicroseconds(maxSpeedL);
   delay(TURN_DELAY);
+  time += TURN_DELAY;
   stopServo();
-//  delay(50);
-  eastDirection();
+  //eastDirection();
 }
 
 
 
 void prepareForLeftTurn(){
-    leftTimer = (leftTimer + 1) % LEFT_TIMER; //Timer
-    if(leftTimer == 0){
+    if(millis() > leftClock + LEFT_TIMER){
       advanceLeft();
       preparingToTurnLeft = 0;
       preparingToTurnRight = 0;
@@ -72,33 +79,38 @@ void prepareForLeftTurn(){
 }
 
 void prepareForRightTurn(){
-  //waitingForRightTimer = 1;
-    rightTimer = (rightTimer + 1) % 75; //Timer
-    if(rightTimer == 0){
-      Serial1.print("There is no wall on the Left side ");
+    if(millis() > rightClock + RIGHT_TIMER){
       advanceRight();
-      //waitingForRightTimer = 0;
-      //waitingForRightRespawn = 1;
+      preparingToTurnLeft = 0;
+      preparingToTurnRight = 0;
+      disableLeftRight();
     }
-    totalError = 0;
-    function = 'F';
+}
+
+void prepareForRightTurnWithoutWall(){
+  if(millis() > rightClock + RIGHT_TIMER_WITH_WALL){
+      advanceRight();
+      preparingToTurnLeft = 0;
+      preparingToTurnRight = 0;
+      disableLeftRight();
+    }
 }
 
 void collectData(){
-  errorL = analogRead(leftSensor) + skewL;
-  errorR = analogRead(rightSensor) + skewR;
-  errorM = analogRead(middleSensor) + skewM;
-//  
-//  counter = (counter + 1) % 10; //Timer
+  errorL = readErrorL();
+  errorR = readErrorR();
+  errorM = readErrorM();
+  
+//  counter = (counter + 1) % 10000; //Timer
 //  
 //  if(counter == 0)
 //  {
-//    Serial1.println("L    R    M");
-//    Serial1.print(errorL);
-//    Serial1.print("    ");
-//    Serial1.print(errorR);
-//    Serial1.print("    ");
-//    Serial1.println(errorM);
+//    Serial.println("L    R    M");
+//    Serial.print(errorL);
+//    Serial.print("    ");
+//    Serial.print(errorR);
+//    Serial.print("    ");
+//    Serial.println(errorM);
 //  }
   
   if((errorL <= LEFTWALLMISSING || preparingToTurnLeft) && (errorR <= RIGHTWALLMISSING || preparingToTurnRight)) // Missing Both walls!!! >:/
@@ -111,7 +123,7 @@ void collectData(){
     totalError = 500 - errorR;
     function = 2;
   }
-  else if(errorR <= RIGHTWALLMISSING || preparingToTurnRight) // Missing Left Wall, PID Concentrates only on Left Error
+  else if(errorR <= RIGHTWALLMISSING || preparingToTurnRight) // Missing Right Wall, PID Concentrates only on Left Error
   {
     totalError = 500 - errorL;
     function = 3;
@@ -147,13 +159,13 @@ void measureOneSecond(){
 }
 
 int readErrorL(){
-  return analogRead(leftSensor) + skewL;
+  return analogRead(leftSensor) * skewL;
 }
 
 int readErrorR(){
-  return analogRead(rightSensor) + skewR;
+  return analogRead(rightSensor) * skewR;
 }
 
 int readErrorM(){
-  return analogRead(middleSensor) + skewM;
+  return analogRead(middleSensor);
 }

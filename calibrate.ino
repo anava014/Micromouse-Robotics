@@ -21,9 +21,9 @@ void calibrate(){
   Serial1.print("    ");
   Serial1.println(errorM);
 
-  skewL = 500 - errorL;
-  skewR = 500 - errorR;
-  skewM = 500 - errorM;
+  skewL = 500 / errorL;
+  skewR = 500 / errorR;
+  skewM = 500 / errorM;
   
   Serial1.println("Skew: ");
   Serial1.print(skewL);
@@ -33,11 +33,11 @@ void calibrate(){
   Serial1.println(skewM);
   
   Serial1.println("Final: ");
-  Serial1.print(errorL + skewL);
+  Serial1.print(errorL * skewL);
   Serial1.print("    ");
-  Serial1.print(errorR + skewR);
+  Serial1.print(errorR * skewR);
   Serial1.print("    ");
-  Serial1.println(errorM + skewM);
+  Serial1.println(errorM * skewM);
   
   Serial1.println("Calibrating Complete");
 
@@ -60,4 +60,19 @@ void calibrateTurns(){
   delay(1000);
   
   while(1) {}
+}
+
+void calibrate180Turns(){
+  forward();
+  delay(1000);
+  advanceLeft();
+  forward();
+  delay(1000);
+  advanceLeft();
+  forward();
+  delay(1000);
+  advanceLeft();
+  forward();
+  delay(1000);
+  advanceLeft(); 
 }
