@@ -10,6 +10,7 @@ void gridInit(){
       mainGrid[i][j] = '0';
       
   mainGrid[15][0] = '1'; //Initial Position
+  --posY;
 }
 
 void printGrid(){
@@ -51,17 +52,32 @@ void travelDistance(unsigned char centimeters){
   }
 }
 
+void manualCell(){
+  gridCounter++;
+  markCell();
+  digitalWrite(cellLED, HIGH);
+  speakerTimer = millis();
+  isTraveling = 0;
+  if(gridCounter >= 58){
+    stopServo();
+    while(1) {}
+  }
+}
+
+void callCellTimer(){
+  time = millis();
+}
+
 void traveledOneCell(int square){
   if(isTraveling){
     if(VELOCITY * (millis() - time) >= square - TRAVELING_CONSTANT){
       gridCounter++;
-      //Serial1.println(VELOCITY * (millis() - time));
       markCell();
       //printGrid();
       digitalWrite(cellLED, HIGH);
       speakerTimer = millis();
       isTraveling = 0;
-      if(gridCounter >= 2){
+      if(gridCounter >= 58){
         stopServo();
         while(1) {}
       }

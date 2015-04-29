@@ -2,12 +2,13 @@
 
 #define bool unsigned char
 #define VELOCITY .01755  //.0169
-#define TRAVELING_CONSTANT .01
+#define TRAVELING_CONSTANT .015
 #define WALL_APPROACHING 145
 #define LEFTWALLMISSING 350
 #define RIGHTWALLMISSING 200
-#define TURN_DELAY 388
+#define TURN_DELAY 394
 #define LEFT_TIMER 800
+#define LEFT_TIMER_WITH_WALL 650
 #define RIGHT_TIMER 800
 #define RIGHT_TIMER_WITH_WALL 650
 #define IN_FRONT_OF_WALL 900
@@ -246,7 +247,7 @@ void logic(){
   }
   else{ 
     if(preparingToTurnLeft)
-      prepareForLeftTurn();
+      prepareForLeftTurnWithoutWall();
     else if(preparingToTurnRight)
       prepareForRightTurnWithoutWall();
   }
@@ -269,24 +270,23 @@ void turnOffCellLed(){
 
 void turnCounter(){
   currentMillis = millis();
-  if(turnsInOneSecond >= 2 && currentMillis > leftTurnClock + 500){
-    time += 130;
+  if(turnsInOneSecond >= 2){// && currentMillis < leftTurnClock + 500){
+    time -= 130;
     turnsInOneSecond = 0;
   }
-  else if(currentMillis > leftTurnClock + 500)
-    turnsInOneSecond = 0;
+//  else if(currentMillis > leftTurnClock + 500)
+//    turnsInOneSecond = 0;
 }
 
 void loop()
 {
-  
   collectData();            // PID for center control
   readFrontSensorForWall(); //Searching for Wall Approaching
   readLeftSensorForWall(); // Searching for blank left Wall, will flag If True
   readRightSensorForWall(); // Searching for blank right wall, will flag If True
   logic();
   
-//  turnCounter();
-//  traveledOneCell(18);
+  turnCounter();
+  traveledOneCell(18);
   lightShow();
 }

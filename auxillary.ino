@@ -9,6 +9,11 @@ void forward(){
     myServoL.writeMicroseconds(maxSpeedL);
 }
 
+void reverse(){
+    myServoR.writeMicroseconds(maxSpeedL - 100);
+    myServoL.writeMicroseconds(maxSpeedR + 10);
+}
+
 void accelerate(int delayTime){
     for(int i = 0; i < 200; ++i)
     {
@@ -30,7 +35,7 @@ void decelerate(int delayTime){
 void advanceLeft()
 {
   myServoR.writeMicroseconds(maxSpeedR);
-  myServoL.writeMicroseconds(maxSpeedR); ///NEED TO WORK ON THIS
+  myServoL.writeMicroseconds(maxSpeedR);
   delay(TURN_DELAY);
   time += TURN_DELAY;
   stopServo();
@@ -38,16 +43,21 @@ void advanceLeft()
   leftTurnClock = millis();
 }
 
+
 void advance180Deg(){
   myServoR.writeMicroseconds(maxSpeedR);
   myServoL.writeMicroseconds(maxSpeedR); 
   delay(TURN_DELAY * 2);
-  time += TURN_DELAY * 2;
-  //time += 200;
   stopServo();
-//  turnsInOneSecond++;
-//  turnsInOneSecond++;
-//  leftTurnClock = millis();
+  manualCell();
+  bumpIt();
+}
+
+void bumpIt(){
+  reverse();
+  delay(300);
+  stopServo();
+  callCellTimer();
 }
 
 void advanceLeftNoDelay()
@@ -87,13 +97,22 @@ void prepareForRightTurn(){
     }
 }
 
+void prepareForLeftTurnWithoutWall(){
+  if(millis() > leftClock + LEFT_TIMER_WITH_WALL){
+      advanceLeft();
+      preparingToTurnLeft = 0;
+      preparingToTurnRight = 0;
+      disableLeftRight();
+   }
+}
+
 void prepareForRightTurnWithoutWall(){
   if(millis() > rightClock + RIGHT_TIMER_WITH_WALL){
       advanceRight();
       preparingToTurnLeft = 0;
       preparingToTurnRight = 0;
       disableLeftRight();
-    }
+   }
 }
 
 void collectData(){
