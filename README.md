@@ -14,10 +14,14 @@ We are instead using a "smart"- random algorithm.
 The software runs well and traverses through the maze with minimal error. 
 We will keep using this software until the end of the season in 2015.
 
+Youtube:
+Early March: https://youtu.be/yOn7Vx07ZI4
+Late March: https://youtu.be/7GNTpL-7F6Q
+
 January, 2015
 ![alt tag](http://i.imgur.com/93ZiiX9.jpg)
 
-March, 2015
+April, 2015
 ![alt tag](http://i.imgur.com/jITsJnL.jpg)
 
 May, 2015
