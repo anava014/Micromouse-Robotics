@@ -11,7 +11,7 @@ void forward(){
 
 void reverse(){
     myServoR.writeMicroseconds(maxSpeedL - 100);
-    myServoL.writeMicroseconds(maxSpeedR + 10);
+    myServoL.writeMicroseconds(maxSpeedR + 100);
 }
 
 void accelerate(int delayTime){
@@ -32,82 +32,69 @@ void decelerate(int delayTime){
   }
 }
 
-void advanceLeft()
-{
-  myServoR.writeMicroseconds(maxSpeedR);
-  myServoL.writeMicroseconds(maxSpeedR);
-  delay(TURN_DELAY);
-  time += TURN_DELAY;
-  stopServo();
-  turnsInOneSecond++;
-  leftTurnClock = millis();
-}
 
 
 void advance180Deg(){
-  myServoR.writeMicroseconds(maxSpeedR);
-  myServoL.writeMicroseconds(maxSpeedR); 
+  myServoR.writeMicroseconds(maxSpeedL);
+  myServoL.writeMicroseconds(maxSpeedL); 
   delay(TURN_DELAY * 2);
   stopServo();
   manualCell();
-  bumpIt();
+  //bumpIt();
 }
 
 void bumpIt(){
   reverse();
   delay(300);
   stopServo();
-  callCellTimer();
+  //callCellTimer();
 }
 
-void advanceLeftNoDelay()
+void advanceLeft()
 {
+  stopServo();
+  delay(100);
   myServoR.writeMicroseconds(maxSpeedR);
-  myServoL.writeMicroseconds(maxSpeedR); ///NEED TO WORK ON THIS
+  myServoL.writeMicroseconds(maxSpeedR);
   delay(TURN_DELAY);
+  stopServo();
+  delay(100);
 }
+
 
 void advanceRight()
 {
+  stopServo();
+  delay(100);
   myServoR.writeMicroseconds(maxSpeedL); ///NEED TO WORK ON THIS
   myServoL.writeMicroseconds(maxSpeedL);
   delay(TURN_DELAY);
-  time += TURN_DELAY;
   stopServo();
-  //eastDirection();
+  delay(100);
 }
 
-
-
-void prepareForLeftTurn(){
-    if(millis() > leftClock + LEFT_TIMER){
-      advanceLeft();
-      preparingToTurnLeft = 0;
-      preparingToTurnRight = 0;
-      disableLeftRight();
-    }
+void advanceRightWithWall(){
+  advanceRight();
 }
 
-void prepareForRightTurn(){
-    if(millis() > rightClock + RIGHT_TIMER){
-      advanceRight();
-      preparingToTurnLeft = 0;
-      preparingToTurnRight = 0;
-      disableLeftRight();
-    }
+void advanceLeftWithWall(){
+  advanceLeft();
 }
 
 void prepareForLeftTurnWithoutWall(){
-  if(millis() > leftClock + LEFT_TIMER_WITH_WALL){
+  //if(millis() > leftClock + LEFT_TIMER_WITHOUT_WALL){
+    if(readErrorL() > LEFTWALLRETURNS){
+      delay(100);
       advanceLeft();
       preparingToTurnLeft = 0;
       preparingToTurnRight = 0;
       disableLeftRight();
+      forward();
    }
 }
 
 void prepareForRightTurnWithoutWall(){
-  if(millis() > rightClock + RIGHT_TIMER_WITH_WALL){
+  if(millis() > rightClock + RIGHT_TIMER_WITHOUT_WALL){
       advanceRight();
       preparingToTurnLeft = 0;
       preparingToTurnRight = 0;
@@ -124,45 +111,58 @@ void collectData(){
 //  
 //  if(counter == 0)
 //  {
-//    Serial.println("L    R    M");
-//    Serial.print(errorL);
-//    Serial.print("    ");
-//    Serial.print(errorR);
-//    Serial.print("    ");
-//    Serial.println(errorM);
-//  }
+//    Serial1.println("L    R    M");
+    //Serial1.println(errorL);
+//    Serial1.print("    ");
+//    Serial1.print(errorR);
+//    Serial1.print("    ");
+//    Serial1.println(errorM);
+  //}
+  if(errorL >= 2300){ //Dragging on Left Side
+    totalError = 0;
+    function = 4;
+  }
+  else if(errorR >= 1200){ //Dragging on Right Side
+    totalError = 0;
+    function = 5;
+  }
   
-  if((errorL <= LEFTWALLMISSING || preparingToTurnLeft) && (errorR <= RIGHTWALLMISSING || preparingToTurnRight)) // Missing Both walls!!! >:/
-  {
+  else if(!disabled){
+    if((errorL <= LEFTWALLMISSING || preparingToTurnLeft) && (errorR <= RIGHTWALLMISSING || preparingToTurnRight)) // Missing Both walls!!! >:/
+    {
+      totalError = 0;
+      function = 'F';
+    }
+    else if(errorL <= LEFTWALLMISSING || preparingToTurnLeft) // Missing Left Wall, PID Concentrates only on Right Error
+    {
+      totalError = 500 - errorR;
+      function = 2;
+    }
+    else if(errorR <= RIGHTWALLMISSING || preparingToTurnRight) // Missing Right Wall, PID Concentrates only on Left Error
+    {
+      totalError = 500 - errorL;
+      function = 3;
+    }
+    else if(errorL > errorR && (errorL-errorR > 7))
+    {
+      totalError = errorL - errorR;
+      function = 0; // Left
+    }
+    else if(errorR > errorL && (errorR-errorL > 7))
+    {
+      totalError = errorR - errorL;
+      function = 1; // Right
+    }
+    else
+    {
+      totalError = 0;
+      function = 'F';
+    }
+  }
+  else{
     totalError = 0;
     function = 'F';
   }
-  else if(errorL <= LEFTWALLMISSING || preparingToTurnLeft) // Missing Left Wall, PID Concentrates only on Right Error
-  {
-    totalError = 500 - errorR;
-    function = 2;
-  }
-  else if(errorR <= RIGHTWALLMISSING || preparingToTurnRight) // Missing Right Wall, PID Concentrates only on Left Error
-  {
-    totalError = 500 - errorL;
-    function = 3;
-  }
-  else if(errorL > errorR && (errorL-errorR > 7))
-  {
-    totalError = errorL - errorR;
-    function = 0; // Left
-  }
-  else if(errorR > errorL && (errorR-errorL > 7))
-  {
-    totalError = errorR - errorL;
-    function = 1; // Right
-  }
-  else
-  {
-    totalError = 0;
-    function = 'F';
-  }
-  
   pid(totalError, function);
 }
 
@@ -177,14 +177,14 @@ void measureOneSecond(){
   }
 }
 
-int readErrorL(){
+double readErrorL(){
   return analogRead(leftSensor) * skewL;
 }
 
-int readErrorR(){
+double readErrorR(){
   return analogRead(rightSensor) * skewR;
 }
 
-int readErrorM(){
+double readErrorM(){
   return analogRead(middleSensor);
 }

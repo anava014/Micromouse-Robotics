@@ -1,21 +1,21 @@
-unsigned char mainGrid [16][16];
-unsigned char posY = 15;
-unsigned char posX = 0;
-unsigned char direction = 0;
+int mainGrid [16][16];
+int posY = 15;
+int posX = 0;
+int facing = 0;
 int firstTimeIn = 0;
 
 void gridInit(){
-  for(unsigned char i = 0; i < 16; ++i)
-    for(unsigned char j = 0; j < 16; ++j)
+  for(int i = 0; i < 16; ++i)
+    for(int j = 0; j < 16; ++j)
       mainGrid[i][j] = '0';
       
   mainGrid[15][0] = '1'; //Initial Position
-  --posY;
+  //--posY;
 }
 
 void printGrid(){
-  for(unsigned char i = 0; i < 16; ++i){
-    for(unsigned char j = 0; j < 16; ++j){
+  for(int i = 0; i < 16; ++i){
+    for(int j = 0; j < 16; ++j){
       Serial1.print(mainGrid[i][j] - '0');
       Serial1.print(" ");
     }
@@ -24,16 +24,24 @@ void printGrid(){
   Serial1.println("");
 }
 
+void stopAtCell(int posY, int posX){
+  if(mainGrid[posY][posX] == '1'){//  || gridCount >= 12){
+    stopServo();
+    printGrid();
+    while(1) {}
+  } 
+}
+
 void markCell(){
-  mainGrid[posY][posX] = '1';
-  if(direction == 0 && posY > 0) //Going North
+  if(facing == 0 && posY > 0) //Going North
     --posY;
-  else if(direction == 1 && posY < 15)//Going South
+  else if(facing == 1 && posY < 15)//Going South
     ++posY;
-  else if(direction == 2 && posX < 15)//Going East
+  else if(facing == 2 && posX < 15)//Going East
     ++posX;
-  else if(direction == 3 && posX > 0)//Going West
+  else if(facing == 3 && posX > 0)//Going West
     --posX;
+  mainGrid[posY][posX] = '1';
 }
 
 void travelDistance(unsigned char centimeters){
@@ -53,15 +61,17 @@ void travelDistance(unsigned char centimeters){
 }
 
 void manualCell(){
-  gridCounter++;
   markCell();
   digitalWrite(cellLED, HIGH);
   speakerTimer = millis();
   isTraveling = 0;
-  if(gridCounter >= 58){
-    stopServo();
-    while(1) {}
-  }
+//  ++gridCount;
+//  if(gridCount >= 8)
+//  {
+//    stopServo();
+//    printGrid();
+//    while(1) {}
+//  }
 }
 
 void callCellTimer(){
@@ -69,18 +79,20 @@ void callCellTimer(){
 }
 
 void traveledOneCell(int square){
-  if(isTraveling){
+  if(isTraveling && !voidThisTravel){
     if(VELOCITY * (millis() - time) >= square - TRAVELING_CONSTANT){
-      gridCounter++;
       markCell();
       //printGrid();
       digitalWrite(cellLED, HIGH);
       speakerTimer = millis();
       isTraveling = 0;
-      if(gridCounter >= 58){
-        stopServo();
-        while(1) {}
-      }
+//      ++gridCount;
+//      if(gridCount >= 8)
+//      {
+//        stopServo();
+//        printGrid();
+//        while(1) {}
+//      }
     }
   }
   if(!isTraveling){
@@ -90,18 +102,56 @@ void traveledOneCell(int square){
   
 }
 
+void changeDirectionLeft(){
+  if(facing == 0){
+    westDirection();
+  }
+  else if(facing == 3){
+    southDirection();
+  }
+  else if(facing == 2){
+    northDirection();
+  }
+  else if(facing == 1){
+    eastDirection();
+  }
+}
+
+void changeDirectionRight(){
+  if(facing == 0){
+    eastDirection();
+  }
+  else if(facing == 3){
+    northDirection();
+  }
+  else if(facing == 2){
+    southDirection();
+  }
+  else if(facing == 1){
+    westDirection();
+  }
+}
+
 void eastDirection(){
-  direction = 2;
+  facing = 2;
 }
 
 void westDirection(){
-  direction = 3;
+  facing = 3;
 }
 
 void northDirection(){
-  direction = 0;
+  facing = 0;
 }
 
 void southDirection(){
-  direction = 1;
+  facing = 1;
 }
+
+void voidTravel(){
+  voidThisTravel = 1;
+  voidTime = millis();
+}
+
+
+

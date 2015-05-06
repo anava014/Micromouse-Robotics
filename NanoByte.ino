@@ -3,27 +3,41 @@
 #define bool unsigned char
 #define VELOCITY .01755  //.0169
 #define TRAVELING_CONSTANT .015
-#define WALL_APPROACHING 145
-#define LEFTWALLMISSING 350
-#define RIGHTWALLMISSING 200
-#define TURN_DELAY 394
-#define LEFT_TIMER 800
-#define LEFT_TIMER_WITH_WALL 650
-#define RIGHT_TIMER 800
-#define RIGHT_TIMER_WITH_WALL 650
-#define IN_FRONT_OF_WALL 900
+#define WALL_APPROACHING 90
+#define LEFTWALLMISSING 205 //170
+#define LEFTWALLRETURNS 295
+
+#define RIGHTWALLMISSING 150
+#define TURN_DELAY 416
+#define LEFT_TIMER 850
+#define LEFT_TIMER_WITHOUT_WALL 680
+#define RIGHT_TIMER 850
+#define RIGHT_TIMER_WITHOUT_WALL 691
+#define IN_FRONT_OF_WALL 650
+
+/*
+Currently working on Left turns.
+Too sensitive, Applyinh more confirmations (from 6 to 10)
+And lowering LEFT.. From 200 to 190
+*/
+
+int defaultErrorM = 0;
 
 int currentMillis = 0;
 
-int BUTTON_PIN = 18;
-int gridCounter = 0;
+int randNumber = 0;
+
+int voidThisTravel = 0;
+int voidTime = 0;
+
+int gridCount = 0;
 
 int turnsInOneSecond = 0;
 int leftTurnClock = 0;
 
-int leftLed = 13;
-int middleLed = 12;
-int rightLed = 11;
+int leftLed = 22;
+int middleLed = 18;
+int rightLed = 20;
 
 int cellLED = 3;
 int speakerTimer = 0;
@@ -62,7 +76,7 @@ int frontWallApproaching = 0;
 int waitingForStop = 0;
 int waitForStop = 0;
 
-const double Kp = .4;
+const double Kp = .45;
 unsigned int counter = 0;
 
 double skewL = 0;
@@ -71,7 +85,6 @@ double skewM = 0;
 const int maxSpeedL = 1700;
 const int maxSpeedR = 1300;
 unsigned char debugMode = 0;
-
 
 Servo myServoL;
 Servo myServoR;
@@ -87,103 +100,76 @@ void setup(void)
   pinMode(middleLed, OUTPUT);
   pinMode(rightLed, OUTPUT);
   pinMode(cellLED, OUTPUT);
-  gridInit();
-  
-  pinMode(BUTTON_PIN, INPUT);
-  digitalWrite(BUTTON_PIN, HIGH); // pull-up
-  
-  Serial.begin(9600);
+  //gridInit();
+
+  //Serial1.begin(9600);
   myServoL.attach(9);  // Servo is connected to digital pin 9 
   myServoR.attach(10);  // Servo is connected to digital pin 10 
   stopServo();
-  digitalWrite(middleLed, HIGH);
+  
   waitForOK();
-  digitalWrite(middleLed, LOW);
+  
   calibrate();
   time = millis();
-  //forward();
+  forward();
 }
 
-int handle_button()
+int fingerWave()
 {
-  int button_pressed = !digitalRead(BUTTON_PIN); // pin low -> pressed
-  return button_pressed;
+  if(readErrorM() > defaultErrorM + 100)
+   return 1;
+  else
+    return 0;
 }
 
 void waitForOK()
 {
-  while(!handle_button()) {}
-}
-
-void pid(int totalError, unsigned char function)
-{
-  if(function == 0) // If it's closer to the left side
-  {
-    if(totalError * Kp < 200)
-      myServoR.writeMicroseconds(maxSpeedR + (totalError * Kp));  // Counter clockwise
-    else // To prevent it from going backwards
-      myServoR.writeMicroseconds(maxSpeedR + 180);  // Counter clockwise
-    myServoL.writeMicroseconds(maxSpeedL);
-  }
-  else if(function == 1) // If it's closer to the right side
-  {
-    if(totalError * Kp < 200)
-      myServoL.writeMicroseconds(maxSpeedL - (totalError * Kp));  // Counter clockwise
-    else // To Prevent it from going backwards
-      myServoL.writeMicroseconds(maxSpeedL - 180);
-    myServoR.writeMicroseconds(maxSpeedR);
-  }
-  else if(function == 2) // No Wall on Left Side
-  {
-    if(totalError > 0){ //Too close to Left Side
-        myServoR.writeMicroseconds(maxSpeedR + (totalError * Kp));
-        myServoL.writeMicroseconds(maxSpeedL);
-    }
-    else{ //Too close to Right Side
-      myServoL.writeMicroseconds(maxSpeedL + (totalError * Kp * 3));  // Counter clockwise //FIX ME NEEDS BOUNDARIES SO IT WONT GO BACKWARDS
-      myServoR.writeMicroseconds(maxSpeedR);
-    }
- }
- else if(function == 3) // No Wall on Right Side
-  {
-    if(totalError > 0){ //Too close to Right Side
-        myServoR.writeMicroseconds(maxSpeedR);
-        myServoL.writeMicroseconds(maxSpeedL - (totalError * Kp * 3));
-    }
-    else{ //Too close to Left Side
-      myServoL.writeMicroseconds(maxSpeedL);  // Counter clockwise //FIX ME NEEDS BOUNDARIES SO IT WONT GO BACKWARDS
-      myServoR.writeMicroseconds(maxSpeedR - (totalError * Kp));
-    }
- }
-  else // Its Kind of in the middle
-  {
-    myServoR.writeMicroseconds(maxSpeedR);
-    myServoL.writeMicroseconds(maxSpeedL);
-  }
+  digitalWrite(middleLed, HIGH);
+  defaultErrorM = readErrorM();
+  while(!fingerWave()) {}
+  digitalWrite(middleLed, LOW);
+  delay(500);
 }
 
 void lightShow() {
   digitalWrite(middleLed, (waitForStop) ? (HIGH) : (LOW));
   digitalWrite(leftLed, (preparingToTurnLeft) ? (HIGH) : (LOW));
   digitalWrite(rightLed, (preparingToTurnRight) ? (HIGH) : (LOW));
-  turnOffCellLed();
-}
-
-void readFrontSensorForWall(){
-  errorM = readErrorM();
-  if(!waitForStop){                                 // if its not already going to continue straight AND its NOT disabled. (meaning disabled = 0)
-    if(errorM >= WALL_APPROACHING)
-      ++frontWallApproaching;
-    else 
-      frontWallApproaching = 0;
-    if(frontWallApproaching >= 5) {
-      waitForStop = 1;
-      frontWallApproaching = 0;
+  
+  if(preparingToTurnLeft){
+    Serial1.println("L       R       M");
+    Serial1.print(errorL);
+    Serial1.print("    ");
+    Serial1.print(errorR);
+    Serial1.print("    ");
+    Serial1.println(errorM);
+  }
+  else{
+    counter = (counter + 1) % 1000; //Timer
+    
+    if(counter == 0){
+      Serial1.println("");
     }
   }
 }
 
-void readLeftSensorForWall(){  //Overall, Checks if Left sensor detects a wall or not and raises or drops flag
+void readFrontSensorForWall(){
+  errorM = readErrorM();
+  if(!waitForStop  && !disabled){                                 // if its not already going to continue straight AND its NOT disabled. (meaning disabled = 0)
+    if(errorM >= WALL_APPROACHING)
+      ++frontWallApproaching;
+    else 
+      frontWallApproaching = 0;
+    if(frontWallApproaching >= 6) {
+      waitForStop = 1;
+      frontWallApproaching = 0;
+    }
+  }
+  else if(waitForStop && errorM <= WALL_APPROACHING)
+    waitForStop = 0;
+}
+
+void readLeftSensorForWall(){                      //Overall, Checks if Left sensor detects a wall or not and raises or drops flag
   errorL = readErrorL();
   if(!preparingToTurnLeft && !disabled){            // if its not already going to turn left AND its NOT disabled. (meaning disabled = 0)
     if(errorL <= LEFTWALLMISSING) {                 //There was a sudden Drop. Increment counter for Left Flag
@@ -192,12 +178,14 @@ void readLeftSensorForWall(){  //Overall, Checks if Left sensor detects a wall o
     else {
       noLeftWallApproaching = 0;                     // Reset Counter
     }
-   if(noLeftWallApproaching >= 5) {                  //Confirmed there is a Missing Left Wall Approaching
+   if(noLeftWallApproaching >= 15) {                  //Confirmed there is a Missing Left Wall Approaching
      preparingToTurnLeft = 1;                        //Raise Left Flag
      leftClock = millis();    
      noLeftWallApproaching = 0;                      //Reset Counter
     }
   }
+  else if(preparingToTurnLeft && !waitForStop && errorL >= LEFTWALLRETURNS + 100)
+    preparingToTurnLeft = 0;
 }
 
 void readRightSensorForWall(){                       //Overall, Checks if Right sensor detects a wall or not and raises or drops flag
@@ -208,7 +196,7 @@ void readRightSensorForWall(){                       //Overall, Checks if Right 
     else
       noRightWallApproaching = 0;                    // Reset Counter
       
-    if(noRightWallApproaching >= 5){                 //Confirmed there is a Missing Right Wall Approaching
+    if(noRightWallApproaching >= 15){                 //Confirmed there is a Missing Right Wall Approaching
       preparingToTurnRight = 1;                      //Raise Left Flag
       rightClock = millis();
       noRightWallApproaching = 0;                    //Reset Counter
@@ -228,13 +216,23 @@ void readRightSensorForWall(){                       //Overall, Checks if Right 
   }
 }
 
+void randomTurn(){
+  randNumber = random(2);
+  if(randNumber == 0)
+    advanceLeftWithWall();
+  else
+    advanceRightWithWall();
+}
+
 void logic(){
-  if(waitForStop || errorM >= IN_FRONT_OF_WALL){
+  if(waitForStop){// || errorM >= IN_FRONT_OF_WALL){
     if(errorM >= IN_FRONT_OF_WALL) {
-      if(preparingToTurnLeft)
-        advanceLeft();
+      if(preparingToTurnLeft && preparingToTurnRight)
+        randomTurn();
+      else if(preparingToTurnLeft)
+        advanceLeftWithWall();
       else if(preparingToTurnRight)
-        advanceRight();
+        advanceRightWithWall();
       else
         advance180Deg();
 
@@ -242,14 +240,15 @@ void logic(){
       preparingToTurnLeft = 0;
       preparingToTurnRight = 0;
       disableLeftRight();
-      prevErrorM = errorM;
     }
   }
   else{ 
-    if(preparingToTurnLeft)
+    if(preparingToTurnLeft && preparingToTurnRight)
+    {}
+    else if(preparingToTurnLeft)
       prepareForLeftTurnWithoutWall();
-    else if(preparingToTurnRight)
-      prepareForRightTurnWithoutWall();
+//    else if(preparingToTurnRight)
+//      prepareForRightTurnWithoutWall();
   }
   enableLeftRight();
 }
@@ -259,7 +258,7 @@ void disableLeftRight(){
   disabledTimer = millis();
 }
 void enableLeftRight(){
-  if(millis() > disabledTimer + 400)
+  if(millis() > disabledTimer + 460)
     disabled = 0;
 }
 
@@ -270,12 +269,18 @@ void turnOffCellLed(){
 
 void turnCounter(){
   currentMillis = millis();
-  if(turnsInOneSecond >= 2){// && currentMillis < leftTurnClock + 500){
-    time -= 130;
+  if(turnsInOneSecond >= 2 && currentMillis < leftTurnClock + 1200){
+    time += 200;
     turnsInOneSecond = 0;
   }
-//  else if(currentMillis > leftTurnClock + 500)
-//    turnsInOneSecond = 0;
+  else if(millis() > leftTurnClock + 1200)
+    turnsInOneSecond = 0;
+}
+
+void disableTravelVoid(){
+  if(millis() > voidTime + 150){
+    voidThisTravel = 0;
+  }
 }
 
 void loop()
@@ -284,9 +289,7 @@ void loop()
   readFrontSensorForWall(); //Searching for Wall Approaching
   readLeftSensorForWall(); // Searching for blank left Wall, will flag If True
   readRightSensorForWall(); // Searching for blank right wall, will flag If True
-  logic();
   
-  turnCounter();
-  traveledOneCell(18);
+  logic();
   lightShow();
 }
