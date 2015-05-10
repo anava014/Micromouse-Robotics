@@ -37,10 +37,8 @@ void decelerate(int delayTime){
 void advance180Deg(){
   myServoR.writeMicroseconds(maxSpeedL);
   myServoL.writeMicroseconds(maxSpeedL); 
-  delay(TURN_DELAY * 2);
+  delay(TURN_DELAY * 2 - 30);
   stopServo();
-  manualCell();
-  //bumpIt();
 }
 
 void bumpIt(){

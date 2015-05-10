@@ -3,17 +3,17 @@
 #define bool unsigned char
 #define VELOCITY .01755  //.0169
 #define TRAVELING_CONSTANT .015
-#define WALL_APPROACHING 90
-#define LEFTWALLMISSING 205 //170
+#define WALL_APPROACHING 78
+#define LEFTWALLMISSING 215 //170
 #define LEFTWALLRETURNS 295
 
-#define RIGHTWALLMISSING 150
+#define RIGHTWALLMISSING 185 //150
 #define TURN_DELAY 416
 #define LEFT_TIMER 850
 #define LEFT_TIMER_WITHOUT_WALL 680
 #define RIGHT_TIMER 850
 #define RIGHT_TIMER_WITHOUT_WALL 691
-#define IN_FRONT_OF_WALL 650
+#define IN_FRONT_OF_WALL 950
 
 int defaultErrorM = 0;
 
@@ -163,14 +163,23 @@ void readLeftSensorForWall(int n){                  // Overall, Checks if Left s
     else {
       noLeftWallApproaching = 0;                    // Reset Counter
     }
-   if(noLeftWallApproaching >= 15) {                // Confirmed there is a Missing Left Wall Approaching
+   if(noLeftWallApproaching >= n) {                // Confirmed there is a Missing Left Wall Approaching
      preparingToTurnLeft = 1;                       // Raise Left Flag
      leftClock = millis();   
      noLeftWallApproaching = 0;                     // Reset Counter
     }
   }
-  else if(preparingToTurnLeft && !waitForStop && errorL >= LEFTWALLRETURNS + 100) /// CHANGE THIS SHIT ///////////////////////////////////////////////
-    preparingToTurnLeft = 0;
+  else{                                             // It is Preparing to turn Left, So we will check it has passed the wall to end it
+    if(!waitForStop && errorL > LEFTWALLMISSING + 100)    // theres no wall in front and there is a wall on the left
+      ++leftWallApproaching; 
+    else
+        leftWallApproaching = 0;
+    if(leftWallApproaching >= 5)                    // confirmation step - confirming there is a wall on the left side
+    {
+      preparingToTurnLeft = 0;                      // turn flag off
+      leftWallApproaching = 0;                      // reseting the counter
+    }
+  }
 }
 
 /* sets boolean readRightSensorForWall to true if it confirms there is no wall on the right side
@@ -259,7 +268,7 @@ void enableLeftRight(){
     disabled = 0;
 }
 
-/* Prints Serial informatim */
+/* Prints Serial information */
 void debugging(){
   if(preparingToTurnLeft){
     Serial1.println("L       R       M");
@@ -282,8 +291,8 @@ void loop()
 {
   collectData();                    // PID for center control
   readFrontSensorForWall(6);        // Searching for Wall Approaching
-  readLeftSensorForWall(15);        // Searching for blank left Wall, will flag If True
-  readRightSensorForWall(15);       // Searching for blank right wall, will flag If True
+  readLeftSensorForWall(50);        // Searching for blank left Wall, will flag If True //20
+  readRightSensorForWall(50);       // Searching for blank right wall, will flag If True //15
    
   logic();                          // Choose whether to turn left, right, or none
   lightShow();                      // Control Debuggging lights

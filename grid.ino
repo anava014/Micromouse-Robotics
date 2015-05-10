@@ -60,47 +60,33 @@ void travelDistance(unsigned char centimeters){
   }
 }
 
-void manualCell(){
-  markCell();
-  digitalWrite(cellLED, HIGH);
-  speakerTimer = millis();
-  isTraveling = 0;
-//  ++gridCount;
-//  if(gridCount >= 8)
-//  {
-//    stopServo();
-//    printGrid();
-//    while(1) {}
-//  }
-}
+//void manualCell(){
+//  markCell();
+//  digitalWrite(cellLED, HIGH);
+//  speakerTimer = millis();
+//  isTraveling = 0;
+//}
 
 void callCellTimer(){
   time = millis();
 }
 
-void traveledOneCell(int square){
-  if(isTraveling && !voidThisTravel){
-    if(VELOCITY * (millis() - time) >= square - TRAVELING_CONSTANT){
-      markCell();
-      //printGrid();
-      digitalWrite(cellLED, HIGH);
-      speakerTimer = millis();
-      isTraveling = 0;
-//      ++gridCount;
-//      if(gridCount >= 8)
-//      {
-//        stopServo();
-//        printGrid();
-//        while(1) {}
-//      }
-    }
-  }
-  if(!isTraveling){
-    time = millis();
-    isTraveling = 1;
-  }
-  
-}
+//void traveledOneCell(int square){
+//  if(isTraveling && !voidThisTravel){
+//    if(VELOCITY * (millis() - time) >= square - TRAVELING_CONSTANT){
+//      markCell();
+//      //printGrid();
+//      digitalWrite(cellLED, HIGH);
+//      speakerTimer = millis();
+//      isTraveling = 0;
+//    }
+//  }
+//  if(!isTraveling){
+//    time = millis();
+//    isTraveling = 1;
+//  }
+//  
+//}
 
 void changeDirectionLeft(){
   if(facing == 0){
